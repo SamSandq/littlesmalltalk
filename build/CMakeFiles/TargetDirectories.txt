@@ -1,0 +1,5 @@
+/Users/sam/Downloads/littlesmalltalk-mac_gui/build/CMakeFiles/bootstrap.dir
+/Users/sam/Downloads/littlesmalltalk-mac_gui/build/CMakeFiles/lst.dir
+/Users/sam/Downloads/littlesmalltalk-mac_gui/build/CMakeFiles/baseimage.dir
+/Users/sam/Downloads/littlesmalltalk-mac_gui/build/CMakeFiles/edit_cache.dir
+/Users/sam/Downloads/littlesmalltalk-mac_gui/build/CMakeFiles/rebuild_cache.dir
