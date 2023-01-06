@@ -6,7 +6,7 @@ project(${PROJECT_NAME})
 
 set (VERSION_MAJOR 4)
 set (VERSION_MINOR 7)
-set (VERSION_PATCH 2)
+set (VERSION_PATCH 1)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
 # make the version file.
@@ -26,7 +26,10 @@ add_executable(bootstrap   "${PROJECT_SOURCE_DIR}/src/bootstrap/bootstrap.c"
                            "${PROJECT_SOURCE_DIR}/src/vm/memory.h"
                            "${PROJECT_SOURCE_DIR}/src/vm/prim.c"
                            "${PROJECT_SOURCE_DIR}/src/vm/prim.h"
-                           "${PROJECT_SOURCE_DIR}/src/vm/prim.h"
+	                   "${PROJECT_SOURCE_DIR}/src/vm/mac_prims.c"
+        	           "${PROJECT_SOURCE_DIR}/src/vm/mac_prims.h"
+	                   "${PROJECT_SOURCE_DIR}/src/vm/mac_gui.m"
+        	           "${PROJECT_SOURCE_DIR}/src/vm/mac_gui.h"
                            "${PROJECT_SOURCE_DIR}/src/vm/version.h"
               )
 
@@ -45,22 +48,36 @@ add_executable(lst "${PROJECT_SOURCE_DIR}/src/vm/main.c"
                    "${PROJECT_SOURCE_DIR}/src/vm/prim.c"
                    "${PROJECT_SOURCE_DIR}/src/vm/prim.h"
                    "${PROJECT_SOURCE_DIR}/src/vm/version.h"
+                   "${PROJECT_SOURCE_DIR}/src/vm/mac_prims.c"
+                   "${PROJECT_SOURCE_DIR}/src/vm/mac_prims.h"
+                   "${PROJECT_SOURCE_DIR}/src/vm/mac_gui.m"
+                   "${PROJECT_SOURCE_DIR}/src/vm/mac_gui.h"
               )
 
+target_link_libraries(bootstrap 
+	"-framework Cocoa"
+	"-framework Quartz")
+
+target_link_libraries(lst 
+	"-framework Cocoa"
+	"-framework Quartz")
+
+target_compile_options(lst PRIVATE -g)
 
 # bootstrap the initial image
 add_custom_target(baseimage ALL
     COMMAND bootstrap -v ${PROJECT_SOURCE_DIR}/src/smalltalk/system/lst.st -o "${CMAKE_BINARY_DIR}/lst_repl.img"
+    COMMAND cp "${CMAKE_BINARY_DIR}/lst_repl.img" "${CMAKE_BINARY_DIR}/lst.img"
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
     COMMENT "Bootstrapping initial image file." VERBATIM
     SOURCES ${PROJECT_SOURCE_DIR}/src/smalltalk/system/lst.st
 )
 
 # bootstrap the web IDE image
-add_custom_target(ideimage ALL
-    COMMAND bootstrap -v ${PROJECT_SOURCE_DIR}/src/smalltalk/webide/webide.st -o "${CMAKE_BINARY_DIR}/lst_webide.img"
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    COMMENT "Bootstrapping web IDE image file." VERBATIM
-    SOURCES ${PROJECT_SOURCE_DIR}/src/smalltalk/webide/webide.st
-)
+# add_custom_target(ideimage ALL
+#    COMMAND bootstrap -v ${PROJECT_SOURCE_DIR}/src/smalltalk/webide/webide.st -o "${CMAKE_BINARY_DIR}/lst_webide.img"
+#    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+#    COMMENT "Bootstrapping web IDE image file." VERBATIM
+#    SOURCES ${PROJECT_SOURCE_DIR}/src/smalltalk/webide/webide.st
+# )
 
