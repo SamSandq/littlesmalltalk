@@ -819,7 +819,7 @@ perform: aMethod withArguments: a | proc |
 !Context
 setup: aMethod withArguments: a
     method <- aMethod.
-    arguments <- Array new: 1.
+    arguments <- a. 						" SSQ: mod: was   <- Array new: 1. "
     bytePointer <- 0.
     stack <- Array new: method stackSize.
     stackTop <- 0.
@@ -3461,8 +3461,7 @@ value
 addArgName: name
     ((instNames includes: name)
         or: [ argNames includes: name ])
-        ifTrue: [ self error: 'doubly defined argument name: ' +
-            name asString].
+        ifTrue: [ self error: 'doubly defined argument name: ' + name asString].
     argNames <- argNames with: name
 
 
@@ -3472,7 +3471,10 @@ addTempName: name
     (((argNames includes: name)
         or: [ instNames includes: name ] )
         or: [ tempNames includes: name ] )
-        ifTrue: [ self error: 'doubly defined name '].
+        ifTrue: [
+		' instNames: ' print. instNames printNl.
+		' tempNames: ' print. tempNames printNl.
+		self error: 'doubly defined name: ' + name asString].
     tempNames <- tempNames with: name.
     maxTemps <- maxTemps max: tempNames size
 
@@ -3613,9 +3615,18 @@ nextLex
     tokenType isEOF   " end of input "
         ifTrue: [ tokenType <- $  . token <- nil. ^ nil ].
     tokenType isDigit ifTrue: [ ^ self lexInteger ].
-    tokenType isAlphabetic ifTrue: [ ^ self lexAlphabetic ].
+    tokenType isAlphabetic ifTrue: [ ^ self lexAlnum ].				" SSQ:  self lexAlphabetic  ->> self lexAlnum " 
     ^ self lexBinary
 
+!
+!Parser
+lexAlnum | cc start |								" SSQ added lexAlnum "
+	start <- index.
+	[ ((cc <- self nextChar) isAlphanumeric) ]
+			whileTrue: [ nil ].
+	((self currentChar) = $: ) ifTrue: [index := index + 1].
+		" add any trailing colons "
+	token <- text from: start to: index - 1
 
 !
 !Parser
