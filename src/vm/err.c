@@ -141,6 +141,7 @@ void backTrace(struct object * aContext)
     }
 }
 
+#define longIntegerValue(x)     (long long)(x->data[0])
 
 
 void dumpObject(struct object *obj, int indent)
@@ -163,6 +164,8 @@ void dumpObject(struct object *obj, int indent)
             dumpObject(obj->data[i], 1);
         }
         fprintf(stderr, " )");
+    } else if (CLASS(obj) == IntegerClass) {
+        fprintf(stderr, "%lld", longIntegerValue(obj));
     } else if(IS_BINOBJ(obj)) {
         fprintf(stderr, "%.*s #(", SIZE(obj->class->data[nameInClass]), (char *)bytePtr(obj->class->data[nameInClass]));
         for(int i=0; i < (int)SIZE(obj); i++) {
