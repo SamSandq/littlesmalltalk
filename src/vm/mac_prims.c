@@ -15,7 +15,7 @@
 void getUnixString(char * to, int size, struct object * from);
 
 //#define longIntegerValue(x)     (long long)(x->data[0])
-#define longIntegerValue(x)     *(int64_t *)bytePtr(x)
+//#define longIntegerValue(x)     *(int64_t *)bytePtr(x)
 
 struct object *mac_primitive(int primitiveNumber, struct object *args, int *failed) {
 
@@ -24,6 +24,8 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
 
     char stringBuffer[255] = "";
     char stringBuffer2[255] = "";
+    char stringBuffer3[255] = "";
+    char stringBuffer4[255] = "";
 
     if (primitiveNumber != 250) return nilObject;   /* SSQ+ these are for GUI primitives */
 
@@ -185,6 +187,38 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
             break;
         case 76:                //add menu directly to view (context menu)
             doAddMenuToView(longIntegerValue(args->data[2]), longIntegerValue(args->data[3]));
+            break;
+        case 80:                //scrollview        <250 80 self>
+            returnedValue = newLInteger( doCreateScrollView() );
+            break;
+        case 81:                //add view to scrollview    <250 81 self scrollpointer viewpointer>
+            doAddViewToScrollView(longIntegerValue(args->data[2]), longIntegerValue(args->data[3]));
+            break;
+        case 90:                //alert panel <250 90 self title message style button1 button2>
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
+            getUnixString(stringBuffer2, sizeof(stringBuffer2)-1, args->data[3]);
+            getUnixString(stringBuffer3, sizeof(stringBuffer3)-1, args->data[5]);
+            getUnixString(stringBuffer4, sizeof(stringBuffer4)-1, args->data[6]);
+            returnedValue = newLInteger( doAlertPanel(stringBuffer, stringBuffer2, integerValue(args->data[4]), stringBuffer3, stringBuffer4) );
+            break;
+        case 91:                //open panel    <250 91 self type multi dir>
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
+            returnedValue = doOpenPanel(stringBuffer, integerValue(args->data[3]), integerValue(args->data[4]));
+            break;
+        case 92:                //save panel    <250 92 self default>
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
+            returnedValue = newString( doSavePanel(stringBuffer) );
+            break;
+
+        case 200:       //TESTING   <250 200 block>
+        {
+            Object *block = args->data[1];
+            Object *tempArr = block->data[temporariesInBlock];
+            int high = integerValue(block->data[argumentLocationInBlock]);
+            int sz = (tempArr ? ((int)SIZE(tempArr) - high) : 0);
+//            printf("Args (high: %d): %d\n", high, sz);
+            returnedValue = newInteger(sz);
+        }
             break;
         default:
             error("Unknown GUI primitive: %d!", subPrim);

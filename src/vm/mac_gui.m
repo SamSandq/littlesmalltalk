@@ -353,6 +353,135 @@ BOOL dragCommon(void *view, id <NSDraggingInfo> info, int type) {
 
 @end        //MyView end
 
+//ALERTPANEL, OPENPANEL, SAVEPANEL
+//-----------------------------------------------------------------------------
+//AlertPanel:  result := Alert title: 'Application' message: 'Are you sure?'. result= 1000 OK, 1001 cancel.
+// res := Alert title: tit message: msg style: x button: 'OK' button: 'Cancel'. Leave the last button blank if you don't want it.
+//styles: Warning: 0, Info: 1, Critical: 2
+
+int doAlertPanel(char *title, char *message, int style, char *button1, char *button2) {
+
+    NSAlert* alert = [[NSAlert new] autorelease];
+    [alert setMessageText: [NSString stringWithUTF8String: title]];
+    [alert setInformativeText: [NSString stringWithUTF8String: message]];
+    [alert setAlertStyle: style];
+    if (strlen(button1) > 0) [alert addButtonWithTitle: [NSString stringWithUTF8String: button1]];
+    if (strlen(button2) > 0) [alert addButtonWithTitle: [NSString stringWithUTF8String: button2]];
+
+    NSModalResponse response = [alert runModal];
+
+    return response;
+}
+
+//-----------------------------------------------------------------------------
+//savePanel: result := Application savePanel: 'default.txt'.
+//on cancel returns the empty, otherwise file name.
+char *doSavePanel(char *title) {
+
+    NSSavePanel* saveFileDialog = [[[NSSavePanel alloc] init] autorelease];
+
+//   [saveFileDialog setCanCreateDirectories:YES];
+//   [saveFileDialog setAllowedFileTypes:[NSArray arrayWithObjects:@"txt", @"md", nil]];
+//   [saveFileDialog setDirectoryURL:[NSURL fileURLWithPath:[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) firstObject]]];
+    [saveFileDialog setNameFieldStringValue: [NSString stringWithUTF8String: title]];
+
+//    NSLog(@"Save with: %s", title);
+
+    NSModalResponse response = [saveFileDialog runModal];
+    if (response == NSModalResponseOK) return (char *) [[[saveFileDialog URL] path] UTF8String];
+
+    return NULL;
+}
+
+//-----------------------------------------------------------------------------
+//OpenPanel:  Application openPanel type: 'txt' multi: 0/1 dir: 0/1. If type is empty all files are accepted
+//returns Array with results. Empty if cancelled
+Object *doOpenPanel(char *type, int multi, int dir) {
+
+    NSURL *dirURL = nil;
+    Object *arr = newArray(0);      //default is empty Array (=nothing selected)
+    int arrSize = 0;
+
+    int canDir = 0;
+    int mulFil = 0;
+    int canFil = 1;
+
+    if (multi > 0) {
+        mulFil = 1;
+    }
+
+    if (dir > 0) {
+        canDir = 1;
+        canFil = 0;
+    }
+
+    NSOpenPanel* openFileDialog = [[[NSOpenPanel alloc] init] autorelease];
+    [openFileDialog setCanChooseFiles: canFil];
+    [openFileDialog setCanChooseDirectories: canDir];
+    [openFileDialog setAllowsMultipleSelection: mulFil];
+    if (strlen(type) > 0) {
+        [openFileDialog setAllowedFileTypes: [NSArray arrayWithObjects: [NSString stringWithUTF8String: type], nil]];
+    };
+
+//  [openFileDialog setDirectoryURL:[NSURL fileURLWithPath:[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) firstObject]]];
+
+    NSModalResponse response = [openFileDialog runModal];
+
+    if (response == NSModalResponseOK) {
+        dirURL = [[openFileDialog URLs] objectAtIndex: 0];
+        if (mulFil && !canDir) {
+
+            arrSize = [[openFileDialog URLs] count];
+            arr = newArray(arrSize);
+            int i = 0;
+            for ( NSURL * thisURL in [openFileDialog URLs] ) {
+                arr->data[i++] = newString( (char *) [[thisURL path] UTF8String]);
+            }
+
+        } else if (mulFil && canDir) {    //directory
+            NSArray *dirContents = [[NSFileManager defaultManager]  contentsOfDirectoryAtPath:
+                [[[openFileDialog URLs] objectAtIndex: 0] path] error: nil];
+
+            arrSize = [dirContents count];
+            arr = newArray(arrSize);
+            int i = 0;
+            for ( NSString * thisPath in dirContents ) {
+                NSString *fullPath = [[ (NSString *) [dirURL path] stringByAppendingString: @"/" ] stringByAppendingString: thisPath];
+                arr->data[i++] = newString( (char *) [fullPath UTF8String]);
+            }
+
+        } else if (canDir && !mulFil){ //just dir
+            arr = newArray(1);
+            arr->data[0] = newString((char *) [ (NSString *) [dirURL path] UTF8String]);
+        } else {    //single file
+            arr = newArray(1);
+            arr->data[0] = newString((char *) [[(NSURL*)[[openFileDialog URLs] objectAtIndex: 0] path] UTF8String]);
+        }
+    }
+
+    return arr;
+}
+
+//SCROLLVIEW
+//-----------------------------------------------------------------------------
+//create scroll view
+long long doCreateScrollView() {
+
+    NSScrollView *view = [[[NSScrollView alloc] initWithFrame: CGRectZero] autorelease];
+    // the scroll view should have both horizontal and vertical scrollers (settable?)
+    [view setHasVerticalScroller: YES];
+    [view setHasHorizontalScroller: YES];
+    [view setLineScroll: 1];
+
+    return (long long) view;
+}
+
+//-----------------------------------------------------------------------------
+//add view  to scrollview
+void doAddViewToScrollView(void *scrollPane, void *view) {
+    [(NSScrollView *) scrollPane setDocumentView: (NSView *) view];
+}
+
 
 //MENUS
 //-----------------------------------------------------------------------------
@@ -902,10 +1031,6 @@ struct object *newArray(int size) {
     return result;
 }
 
-extern struct object *newLInteger(int64_t val);
-
-#define longIntegerValue(x)     (long long)(x->data[0])
-
 //-----------------------------------------------------------------------------
 //init GUI Cocoa app
 void initMacGUI() {
@@ -992,12 +1117,6 @@ void initMacGUI() {
 
 @implementation MyAppDelegate           //delegate and initialisation stuff
 
-- (void) reaction: (id) sender {
-
-    NSLog(@"REACTION from %@", sender);
-
-}
-
 //HELPER target for stuff : no argument but sender. MacOS calls this if the action: is set as being triggered on an event
 - (void) action: (id) sender {
 
@@ -1029,9 +1148,9 @@ void initMacGUI() {
     //... build Context ...
     struct object *myContext = myProcess->data[contextInProcess];
 
-//     //set into arg array item 4!
-//     struct object *argArray = myContext->data[argumentsInContext];
-//     argArray->data[3] = nilObject;
+    //set into arg array item 4!
+    struct object *argArray = myContext->data[argumentsInContext];
+    argArray->data[2] = newString(ptr);
 
     rootStack[rootTop++] = myContext;
 

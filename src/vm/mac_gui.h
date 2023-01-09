@@ -9,6 +9,13 @@
 
 #pragma once
 
+typedef struct object Object;
+#define longIntegerValue(x)     (long long) (x->data[0])    //*(int64_t *)bytePtr(x)
+
+//extern struct object *newLInteger(int64_t val);
+
+extern Object *newLInteger();
+
 extern void initMacGUI();
 extern struct object *getClassVariable();
 extern struct object *getVariable();
@@ -51,7 +58,7 @@ extern void doSetViewBackgroundColour();
 extern void doSetViewBorderColour();
 extern void doSetTextColour();
 extern void doSetViewBorderWidth();
-struct object *doGetMousePositionInWindow();
+extern struct object *doGetMousePositionInWindow();
 extern long long doCreateFont();
 extern void doSetFont();
 extern long long doCreateMenu();
@@ -61,4 +68,8 @@ extern long long doCreateMenuItemSeparator();
 extern void doAddMenuItem();
 extern void doAddMenuToView();
 extern void doSetMenuAsSubmenuForItem();
-
+extern long long doCreateScrollView();
+extern void doAddViewToScrollView();
+extern int doAlertPanel();
+extern char *doSavePanel();
+extern Object *doOpenPanel();
