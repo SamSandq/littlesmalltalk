@@ -66,6 +66,8 @@
 +Collection subclass: #Array variables: #( ) classVariables: #( )
 " class definition for ByteArray "
 +Array subclass: #ByteArray variables: #( ) classVariables: #( )
+" class definition for Image "
++ByteArray subclass: #Image variables: #( ) classVariables: #( )
 " class definition for OrderedArray "
 +Array subclass: #OrderedArray variables: #( ) classVariables: #( )
 " class definition for String "
@@ -3514,6 +3516,8 @@ basicAt: index
 
 
 !
+" class methods for Image "
+" instance methods for Image "
 " class methods for OrderedArray "
 " instance methods for OrderedArray "
 !OrderedArray
