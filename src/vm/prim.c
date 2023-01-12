@@ -30,7 +30,7 @@ char *tmpdir = NULL;
 static uint8_t socketReadBuffer[SOCK_BUF_SIZE] = {0,};
 
 #define FILEMAX 200
-static FILE *filePointers[FILEMAX] = {0,};
+FILE *filePointers[FILEMAX] = {0,};
 
 /*
 These static character strings are used for URL conversion

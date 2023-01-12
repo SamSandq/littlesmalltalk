@@ -5,12 +5,17 @@
 // see LICENCE file for details
 //
 
+#include <stdlib.h>
 #include "globals.h"
 #include "interp.h"
 #include "memory.h"
 #include "err.h"
 #include "prim.h"
 #include "mac_gui.h"
+
+//these are from prim.c
+#define FILEMAX 200
+extern FILE *filePointers[];
 
 void getUnixString(char * to, int size, struct object * from);
 
@@ -19,23 +24,60 @@ void getUnixString(char * to, int size, struct object * from);
 
 struct object *mac_primitive(int primitiveNumber, struct object *args, int *failed) {
 
+    Object *returnedValue;
+    int i;
+    FILE *fp;
+    int unsigned fLen;
+
     //important to set NOT failed initially!
     *failed = 0;
 
-    char stringBuffer[255] = "";
-    char stringBuffer2[255] = "";
-    char stringBuffer3[255] = "";
-    char stringBuffer4[255] = "";
+    char stringBuffer[1024] = "";
+    char stringBuffer2[1024] = "";
+    char stringBuffer3[1024] = "";
+    char stringBuffer4[1024] = "";
 
-    if (primitiveNumber != 250) return nilObject;   /* SSQ+ these are for GUI primitives */
+    //we have some with other than 250...
+    if (primitiveNumber != 250) {
+        switch (primitiveNumber) {
+            case 251:       //get string format of Time     <251 timestamp> obtained by e.g. <161>
+                returnedValue = doStringDateTime(args->data[0]);
+                break;
+            case 252:       //get length of file            <252 fileId>
+                i = integerValue(args->data[0]);
+                if ((i < 0) || (i >= FILEMAX) || !(fp = filePointers[i])) {
+                    *failed = 1;
+                    break;
+                }
+                fseek(fp, 0, SEEK_END);
+                fLen = ftell(fp);
+                returnedValue = newInteger( fLen );
+                fseek(fp, 0, SEEK_SET);
+                break;
+            case 253:       //get number of temporaries in block    <253 block>
+            {
+                Object *block = args->data[0];
+                Object *tempArr = block->data[temporariesInBlock];
+                int high = integerValue(block->data[argumentLocationInBlock]);
+                int sz = (tempArr ? ((int)SIZE(tempArr) - high) : 0);
+    //            printf("Args (high: %d): %d\n", high, sz);
+                returnedValue = newInteger(sz);
+            }
+                break;
+            default:
+                returnedValue = nilObject;
+                break;
+        }
 
-    //all have the form <300 subPrim self arg1 arg2 ....>
+        return returnedValue;   /* 250: SSQ+ these are for GUI primitives */
+    }
+    //all have the form <250 subPrim self arg1 arg2 ....>
 
     int subPrim = integerValue(args->data[0]);      //get the subprimitive
 
     //default is returning self, passed in for just that purpose (otherwise cascade won't work)
     //however, when creating new elements we return the new one as a pointer (long long), not self
-    struct object *returnedValue = args->data[1];
+    returnedValue = args->data[1];
 
     //the big switch based on the subroutine we want to run
     switch (subPrim) {
@@ -188,6 +230,26 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
         case 76:                //add menu directly to view (context menu)
             doAddMenuToView(longIntegerValue(args->data[2]), longIntegerValue(args->data[3]));
             break;
+        case 77:
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
+            getUnixString(stringBuffer2, sizeof(stringBuffer2)-1, args->data[3]);
+            returnedValue = newLInteger(doCreateMenuItemCut(stringBuffer2, stringBuffer));
+            break;
+        case 78:
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
+            getUnixString(stringBuffer2, sizeof(stringBuffer2)-1, args->data[3]);
+            returnedValue = newLInteger(doCreateMenuItemCopy(stringBuffer2, stringBuffer));
+            break;
+        case 79:
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
+            getUnixString(stringBuffer2, sizeof(stringBuffer2)-1, args->data[3]);
+            returnedValue = newLInteger(doCreateMenuItemPaste(stringBuffer2, stringBuffer));
+            break;
+        case 790:
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
+            getUnixString(stringBuffer2, sizeof(stringBuffer2)-1, args->data[3]);
+            returnedValue = newLInteger(doCreateMenuItemSelectAll(stringBuffer2, stringBuffer));
+            break;
         case 80:                //scrollview        <250 80 self>
             returnedValue = newLInteger( doCreateScrollView() );
             break;
@@ -209,17 +271,21 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
             getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
             returnedValue = newString( doSavePanel(stringBuffer) );
             break;
-
-        case 200:       //TESTING   <250 200 block>
-        {
-            Object *block = args->data[1];
-            Object *tempArr = block->data[temporariesInBlock];
-            int high = integerValue(block->data[argumentLocationInBlock]);
-            int sz = (tempArr ? ((int)SIZE(tempArr) - high) : 0);
-//            printf("Args (high: %d): %d\n", high, sz);
-            returnedValue = newInteger(sz);
-        }
+        case 100:               //create image pane <250 100 self>
+            returnedValue = newLInteger( doCreateImageView() );
             break;
+        case 101:               //set image to imageview    <250 101 self pane imagedata length scaling>
+            {
+            struct byteObject *buff = (struct byteObject *) args->data[3];
+            unsigned int sz = SIZE(buff);
+            void *ptr = malloc(sz+1);
+            if (ptr == NULL) error("Cannot allocate temporary buffer for image size: %d", sz);
+            getUnixString(ptr, sz+1, buff);
+            doSetImage(longIntegerValue(args->data[2]), ptr, integerValue(args->data[4]), integerValue(args->data[5]));
+            free(ptr);
+            }
+            break;
+
         default:
             error("Unknown GUI primitive: %d!", subPrim);
             break;

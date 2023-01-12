@@ -67,6 +67,8 @@ BOOL eventCommon(void *sender, NSEvent *theEvent) {
             break;
         case NSEventTypeKeyUp:
             strcpy(stringEvent, "kUp");
+        case NSEventTypeApplicationDefined:
+            strcpy(stringEvent, "mLDouble");
             break;
         default:
             return FALSE;
@@ -353,6 +355,178 @@ BOOL dragCommon(void *view, id <NSDraggingInfo> info, int type) {
 
 @end        //MyView end
 
+//own MyImageView
+@interface MyImageView : NSImageView {
+    BOOL acceptResponder;
+    BOOL isFlipped;
+}
+
+@property BOOL acceptResponder, isFlipped;
+- (BOOL) acceptResponder;
+- (BOOL) isFlipped;
+@end
+
+@implementation MyImageView
+
+@synthesize acceptResponder;
+@synthesize isFlipped;
+
+//init
+- (id) init {
+    self = [super init];
+    acceptResponder = NO;           //default is not
+    isFlipped = NO;                 //normally no
+    return self;
+}
+
+//catch the events
+- (void) mouseDown: (NSEvent *) theEvent {
+    if ([theEvent clickCount] == 2) {
+        NSEvent *doubleClick = [NSEvent otherEventWithType: NSEventTypeApplicationDefined
+                            location: NSZeroPoint modifierFlags: 0 timestamp: 0 windowNumber: 0 context: 0 subtype: 0 data1: 0 data2: 0];
+        if (!eventCommon(self, doubleClick)) [super mouseDown: theEvent];
+    } else
+    if (!eventCommon(self, theEvent)) [super mouseDown: theEvent];
+}
+
+- (void) mouseDragged: (NSEvent *) theEvent {
+    if (!eventCommon(self, theEvent)) [super mouseDragged: theEvent];
+}
+
+- (void) mouseUp: (NSEvent *) theEvent {
+    if (!eventCommon(self, theEvent)) [super mouseUp: theEvent];
+}
+
+- (void) mouseMoved: (NSEvent *) theEvent {
+    if (!eventCommon(self, theEvent)) [super mouseMoved: theEvent];
+}
+
+- (void) rightMouseDown: (NSEvent *) theEvent {
+    if (self.menu) {
+        NSPoint pt = [self convertPoint: [theEvent locationInWindow] fromView: nil];
+        [self.menu popUpMenuPositioningItem: nil atLocation: pt inView: self ];
+    }
+    //same effect with the call to super...
+//    [super rightMouseDown: theEvent];
+    eventCommon(self, theEvent);
+//    if (!eventCommon(self, theEvent)) [super rightMouseDown: theEvent];
+}
+
+- (void) rightMouseDragged: (NSEvent *) theEvent {
+    if (!eventCommon(self, theEvent)) [super rightMouseDragged: theEvent];
+}
+
+- (void) rightMouseUp: (NSEvent *) theEvent {
+    if (!eventCommon(self, theEvent)) [super rightMouseUp: theEvent];
+}
+
+- (void) keyDown: (NSEvent *) theEvent {
+    if (!eventCommon(self, theEvent)) [super keyDown: theEvent];
+}
+
+- (void) keyUp: (NSEvent *) theEvent {
+    if (!eventCommon(self, theEvent)) [super keyUp: theEvent];
+}
+
+- (void) willOpenMenu: (NSMenu *) menu withEvent: (NSEvent *) theEvent {
+//    printf("MyView will open menu %p!\n", menu);
+}
+
+- (void) needsUpdateMenu: (NSMenu *) menu withEvent: (NSEvent *) theEvent {
+//    printf("MyView will update menu %p!\n", menu);
+}
+
+- (void) didCloseMenu: (NSMenu *) menu withEvent: (NSEvent *) theEvent {
+//    printf("MyView did close menu %p!\n", menu);
+}
+
+//drag & drop
+- (NSDragOperation) draggingEntered: (id <NSDraggingInfo>) sender {
+    dragCommon(self, sender, 0);
+//    NSLog(@"Enter");
+    //prevent operations on source NSStringFromClass(self.class)
+    id src = NSStringFromClass([[sender draggingSource] class]);
+//    id slf = NSStringFromClass([self class]);
+
+    if ([src isEqualToString: @"MyImageView"]) {
+//        NSLog(@"None");
+        return NSDragOperationNone;
+    }
+    return NSDragOperationGeneric;
+};
+
+- (BOOL) prepareForDragOperation: (id <NSDraggingInfo>) sender {
+//    NSLog(@"Prepare");
+    dragCommon(self, sender, 1);
+    return YES;
+};
+
+- (BOOL) performDragOperation: (id <NSDraggingInfo>) sender {
+//    NSLog(@"Perform");
+    //if ([super performDragOperation: sender])
+    dragCommon(self, sender, 2);
+    return YES;
+};
+
+- (void) draggingEnded: (id <NSDraggingInfo>) sender {
+//    NSLog(@"End");
+    dragCommon(self, sender, 3);
+};
+
+- (void) draggingExited: (id <NSDraggingInfo>) sender {
+//    NSLog(@"Exit");
+    dragCommon(self, sender, 4);
+};
+
+- (void) concludeDragOperation: (id <NSDraggingInfo>) sender {
+//    NSLog(@"Conclude");
+    dragCommon(self, sender, 5);
+};
+
+@end        //MyImageView end
+
+//IMAGES
+//-----------------------------------------------------------------------------
+//create image view
+long long doCreateImageView() {
+
+    NSImageView *view = [[[MyImageView alloc] initWithFrame: CGRectZero] autorelease];
+
+    [view setLayer: [CALayer new]];
+    [view setWantsLayer: YES];     // the order of setLayer and setWantsLayer is crucial!
+    [view.layer setMasksToBounds: YES];
+
+    return (long long) view;
+}
+
+//-----------------------------------------------------------------------------
+//set image in view
+void doSetImage(void *w, void *im, int len, int scale) {
+
+    id scaleMode;
+    switch (scale) {
+        case 0: scaleMode = kCAGravityCenter; break;
+        case 1: scaleMode = kCAGravityResize; break;
+        case 2: scaleMode = kCAGravityResizeAspect; break;
+        case 3: scaleMode = kCAGravityResize; break;
+        default: scaleMode = kCAGravityResizeAspect; break;
+    }
+
+    //set the scaling
+    [((NSImageView *) w).layer setContentsGravity: scaleMode];
+
+    //set the image
+    if (len == 0) {
+        //our image data implicitly contains the size.
+        [((NSImageView *) w).layer setContents: im];
+    } else {
+        //param len contains the length
+        NSData *data = [NSData dataWithBytes: im length: (NSUInteger) len];
+        [((NSImageView *) w).layer setContents: [[NSImage alloc] initWithData: data]];
+    }
+
+}
+
 //ALERTPANEL, OPENPANEL, SAVEPANEL
 //-----------------------------------------------------------------------------
 //AlertPanel:  result := Alert title: 'Application' message: 'Are you sure?'. result= 1000 OK, 1001 cancel.
@@ -511,19 +685,47 @@ long long doCreateMenu(char *title) {
 
 //-----------------------------------------------------------------------------
 //create new menu item (not yet connected to anything)
-long long doCreateMenuItem(char *key, char *title) {
+long long menuItemCommon(char *key, char *title, SEL select) {
 
     NSString *t = [NSString stringWithUTF8String: title];
     NSString *k = [NSString stringWithUTF8String: key];
 
     id menuItem = [[[NSMenuItem alloc]
         initWithTitle: t
-        action: @selector(action:)              //NB: this set in the actionTable
+        action: select
         keyEquivalent: k] autorelease];
 
-    //NSLog(@"MenuItem %lld created", menuItem);
-
     return (long long) menuItem;
+}
+
+//-----------------------------------------------------------------------------
+//create new menu item (not yet connected to anything)
+long long doCreateMenuItem(char *key, char *title) {
+    return menuItemCommon(key, title, @selector(action:));
+}
+
+//-----------------------------------------------------------------------------
+//create copy item
+long long doCreateMenuItemCopy(char *key, char *title) {
+    return menuItemCommon(key, title, @selector(copy:));
+}
+
+//-----------------------------------------------------------------------------
+//create cut item
+long long doCreateMenuItemCut(char *key, char *title) {
+    return menuItemCommon(key, title, @selector(cut:));
+}
+
+//-----------------------------------------------------------------------------
+//create paste item
+long long doCreateMenuItemPaste(char *key, char *title) {
+    return menuItemCommon(key, title, @selector(paste:));
+}
+
+//-----------------------------------------------------------------------------
+//create select all item
+long long doCreateMenuItemSelectAll(char *key, char *title) {
+    return menuItemCommon(key, title, @selector(selectAll:));
 }
 
 //-----------------------------------------------------------------------------
@@ -851,8 +1053,8 @@ NSTextField *textFieldCommon(int maxLines, BOOL editable, BOOL selectable) {
         [textField setUsesSingleLineMode: NO];
         [textField setMaximumNumberOfLines: maxLines];
     } else {
-        [textField setUsesSingleLineMode: YES];
-        [textField setMaximumNumberOfLines: 1];
+        [textField setUsesSingleLineMode: NO];
+//        [textField setMaximumNumberOfLines: 1];
     }
 
 //    [textField setDelegate: myDelegate];
@@ -1031,6 +1233,18 @@ struct object *newArray(int size) {
     return result;
 }
 
+//HELPER: formatted date and time
+Object *doStringDateTime(Object *o) {
+	struct tm *loctime;
+	char buf[50] = "";
+
+    long timeValue = longIntegerValue(o)/1e6;
+	loctime = (struct tm *) localtime((const time_t *) &timeValue);
+	sprintf(buf, "%d %d %d %d %d %d", loctime->tm_year+1900, loctime->tm_mon+1, loctime->tm_mday, loctime->tm_hour, loctime->tm_min, loctime->tm_sec);
+
+	return newString(buf);
+}
+
 //-----------------------------------------------------------------------------
 //init GUI Cocoa app
 void initMacGUI() {
@@ -1065,6 +1279,9 @@ void initMacGUI() {
     setClassVariable("MacApp", "homeDirectory", newString((char *)[NSHomeDirectory() UTF8String]));
     setClassVariable("MacApp", "executableDirectory", newString((char *)[exPath UTF8String]));
     setClassVariable("MacApp", "resourceDirectory", newString((char *)[resPath UTF8String]));
+    setClassVariable("MacApp", "openFile", newString(""));
+
+//    setClassVariable("MacApp", "mainScreenFrame", newString((char *)[resPath UTF8String]));
 
 //
 //     NSString *startup = [myBundle pathForResource:@"startup4" ofType:@"s"];          //default is where resource is
@@ -1278,6 +1495,13 @@ void initMacGUI() {
     [myDelegate noteAction: sender name: name];
 }
 
+- (BOOL) application: (NSApplication *) sender openFile: (NSString *) filename {
+
+    //set info in MacApp
+    setClassVariable("MacApp", "openFile", newString((char *) [filename UTF8String]));
+
+    return YES;
+}
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
