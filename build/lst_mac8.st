@@ -1561,6 +1561,40 @@ basicGetColor
 
 !
 !Pane
+basicMouse: aBlock for: event modifier: mod key: aKey
+    |entry eventType meth s args proc|
+    " we need to register the event and the method that executes the block
+    "
+
+    aKey isNil ifTrue: [entry := ((self pointer asString), '_', (mod asString))]
+              ifFalse: [entry := ((self pointer asString), '_', (mod asString), '_', (aKey asString))].
+
+    "event type tables may be missing"
+    eventType := (MacApp eventTable at: event ifAbsent: [Dictionary new]).
+
+    s := (event + ': block s: sender n: name
+        block value: sender value: name.
+    ').
+
+    meth := self parseMethod: s.
+    meth isNil ifTrue: ['Compile failed!' printNl. ^self].
+
+    args := Array new: 4.
+    args at: 1 put: self.
+    args at: 2 put: aBlock. " block to exec "
+    args at: 3 put: entry.  " sender "
+    args at: 4 put: event.  " this will have the notification name "
+
+    proc := Process new context: (Context new setup: meth withArguments: args).
+
+    eventType at: entry put: proc.
+    MacApp eventTable at: event put: eventType.
+    MacApp senderTable at: entry put: (self pointer asString).
+
+
+
+!
+!Pane
 basicNew
 	<250 12 self>
 
@@ -1950,10 +1984,18 @@ basicColorPanel
 
 !
 !ColorPanel
-color
+basicGetColorFromPanel
     |p|
     p := self pointer.
     <250 48 self p>
+
+!
+!ColorPanel
+color
+    |m p|
+    m := Color new.
+    m pointer: (self basicGetColorFromPanel).
+    ^m
 
 !
 !ColorPanel

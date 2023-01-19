@@ -855,7 +855,7 @@ basicMouse: aBlock for: event modifier: mod key: aKey
 
     eventType at: entry put: proc.
     MacApp eventTable at: event put: eventType.
-    MacApp senderTable at: entry put: item.
+    MacApp senderTable at: entry put: (self pointer asString).
 
 
 !
@@ -1465,6 +1465,14 @@ hide
 
 !ColorPanel
 color
+    |m p|
+    m := Color new.
+    m pointer: (self basicGetColorFromPanel).
+    ^m
+!
+
+!ColorPanel
+basicGetColorFromPanel
     |p|
     p := self pointer.
     <250 48 self p>
