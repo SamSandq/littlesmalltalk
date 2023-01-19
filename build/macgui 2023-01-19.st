@@ -36,6 +36,7 @@ mainWindow
         eventTable := Dictionary new.
         actionTable := Dictionary new.
         notificationTable := Dictionary new.
+        senderTable := Dictionary new.
     ].
 	^mainWindow
 
@@ -854,6 +855,7 @@ basicMouse: aBlock for: event modifier: mod key: aKey
 
     eventType at: entry put: proc.
     MacApp eventTable at: event put: eventType.
+    MacApp senderTable at: entry put: item.
 
 
 !
