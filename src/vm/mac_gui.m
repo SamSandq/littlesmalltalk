@@ -656,6 +656,21 @@ void doAddViewToScrollView(void *scrollPane, void *view) {
     [(NSScrollView *) scrollPane setDocumentView: (NSView *) view];
 }
 
+//-----------------------------------------------------------------------------
+//obtain scroll view's visible rectangle
+Object *doScrollViewRect(void *view) {
+
+    NSRect f = [(NSScrollView *) view documentVisibleRect];
+
+    //unpack and create array
+    struct object *arr = newArray(4);
+    arr->data[0] = newInteger((int) f.origin.x);
+    arr->data[1] = newInteger((int) f.origin.y);
+    arr->data[2] = newInteger((int) f.size.width);
+    arr->data[3] = newInteger((int) f.size.height);
+    return arr;
+}
+
 
 //MENUS
 //-----------------------------------------------------------------------------
@@ -757,6 +772,8 @@ void doAddMenuToView(void *w, void *m) {
     //NSLog(@"set menu %lld to view %lld", m, w);
 }
 
+
+//FONTS
 //-----------------------------------------------------------------------------
 //create font
 // use: fnt := Font name: 'Arial' size: 16 bold: false italic: false.
@@ -778,6 +795,8 @@ void doSetFont(void *w, void *font) {
     [(NSControl *) w setFont: (NSFont *) font];
 }
 
+
+//VIEWS
 //-----------------------------------------------------------------------------
 //set focus to view in window
 void doSetFocus(void *w) {
@@ -867,6 +886,35 @@ void doSetViewBorderWidth(void *v, int width) {
 }
 
 //-----------------------------------------------------------------------------
+//flip view: flip 0 do not, 1 do.
+void doFlipView(void *view, int flip) {
+        [(NSView *) view setIsFlipped: (flip == 0) ? NO: YES];
+}
+
+//-----------------------------------------------------------------------------
+//make view have rounded corners: radius in pixels
+void doCornerView(void *view, int radius) {
+
+    ((NSView *) view).wantsLayer = YES;
+    ((NSView *) view).layer.cornerRadius  = radius; //view.frame.size.width/2; use this for circle!
+    ((NSView *) view).layer.masksToBounds = YES;
+
+}
+
+//-----------------------------------------------------------------------------
+//make view have shadow: radius in pixels, opacity in percent
+void doShadowView(void *view, int radius, int opacity) {
+
+    ((NSView *) view).wantsLayer = YES;
+    ((NSView *) view).layer.shadowOpacity  = (float) opacity/100.0; //0.5f;
+    ((NSView *) view).layer.shadowRadius = (float) radius;   //5.0f;
+//    view.layer.shadowOffset = CGSizeMake(0.0f,-10.0f);
+    ((NSView *) view).layer.masksToBounds = NO;
+}
+
+
+//COLOURS
+//-----------------------------------------------------------------------------
 //create colour object
 long long doCreateColour(float r, float g, float b, float a) {
 
@@ -891,6 +939,24 @@ void doSetViewBackgroundColour(void *v, void *c) {
 }
 
 //-----------------------------------------------------------------------------
+//get view background colour
+long long doGetBackgroundColour(void *v) {
+
+    //set default as black colour
+    NSColor *myColour = [NSColor blackColor];
+
+    //get view and its layer colour
+    CGColorRef col = [((NSView *)v).layer backgroundColor];     //NULL if nothing
+
+    //if there is one get it
+    if (col != NULL) {
+        myColour = [NSColor colorWithCGColor: col];
+    }
+
+    return (long long) myColour;
+}
+
+//-----------------------------------------------------------------------------
 //set view border colour
 void doSetViewBorderColour(void *v, void *c) {
 
@@ -907,6 +973,50 @@ void doSetTextColour(void *v, void *c) {
     [(NSTextField *) v setTextColor: (NSColor *) c];
 }
 
+//-----------------------------------------------------------------------------
+//get colour as Array
+Object *doColourAsArray(void *c) {
+
+    CGFloat red = 0.0, green = 0.0, blue = 0.0, alpha = 0.0;
+
+    [(NSColor *) c getRed: &red green: &green blue: &blue alpha: &alpha];
+
+    //create the Array and fill it; scale the floats to 0..255 [not perfect!]
+    Object *arr = newArray(4);
+    arr->data[0] = newInteger((int) red * 255.0);
+    arr->data[1] = newInteger((int) green * 255.0);
+    arr->data[2] = newInteger((int) blue * 255.0);
+    arr->data[3] = newInteger((int) alpha * 255.0);
+
+    return arr;
+}
+
+//-----------------------------------------------------------------------------
+//colourPanel: picker := MacApp colorPanel.
+long long doColourPanel() {
+
+    NSColorPanel* cp = [NSColorPanel sharedColorPanel];
+    [cp setIsVisible: NO];
+
+    return (long long) cp;
+}
+
+//-----------------------------------------------------------------------------
+//show colour panel
+void doShowColourPanel(void *cp, int show) {
+    [(NSColorPanel *) cp setIsVisible: (show == 0 ? NO : YES)];
+}
+
+//-----------------------------------------------------------------------------
+//get colour from panel
+long long doGetColourFromPanel(void *cp) {
+
+    NSColor *myColour = [(NSColorPanel *) cp color];
+
+    return (long long) myColour;
+}
+
+//WINDOW AND FRAME
 //-----------------------------------------------------------------------------
 //set window resize
 void doWindowResize(void *w, struct object *block) {
@@ -947,7 +1057,7 @@ long long doCreateView() {
 //-----------------------------------------------------------------------------
 //set control action block to be executed on e.g. button click
 void doSetControlAction(void *w, struct object *block) {
-//    NSLog(@"%p %p", w, block);
+//    NSLog(@"control: %lld block: %lld", w, block);
     [(NSControl *) w setAction: @selector(action:)];        //action: is the Obj-c message to the application delegate
 }
 
@@ -1109,6 +1219,17 @@ void doAppRun() {
 
 
 //-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//copy file the ObjC way
+void doCopyFile(char *topath, char *frompath) {
+
+    NSString *srcPath = [NSString stringWithUTF8String: frompath];
+    NSString *dstPath = [NSString stringWithUTF8String: topath];
+
+    [[NSFileManager defaultManager] copyItemAtPath: srcPath toPath: dstPath error: nil];
+
+}
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -1529,6 +1650,12 @@ void initMacGUI() {
     [window release];
     [[NSNotificationCenter defaultCenter] removeObserver: self];
     [super dealloc];
+}
+
+//pick up colour changes in colour panel
+- (void) changeColor: (id) sender {
+
+    [self action: sender];
 }
 
 //TEXTFIELD delegate

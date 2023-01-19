@@ -64,6 +64,11 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
                 returnedValue = newInteger(sz);
             }
                 break;
+            case 254:       //copyFile <254 to from>
+                getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[0]);
+                getUnixString(stringBuffer2, sizeof(stringBuffer)-1, args->data[1]);
+                doCopyFile(stringBuffer, stringBuffer2);
+                break;
             default:
                 returnedValue = nilObject;
                 break;
@@ -195,6 +200,21 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
         case 43:                //set text colour    <250 43 self textitem colour>
             doSetTextColour(longIntegerValue(args->data[2]), longIntegerValue(args->data[3]));
             break;
+        case 44:                //get view colour   <250 44 self pane>
+            returnedValue = newLInteger( doGetBackgroundColour(longIntegerValue(args->data[2])));
+            break;
+        case 45:                //get colour as Array   <250 45 self colour>
+            returnedValue = doColourAsArray(longIntegerValue(args->data[2]));
+            break;
+        case 46:                //create colourPanel    <250 46 self>
+            returnedValue = newLInteger(doColourPanel());
+            break;
+        case 47:                //show/hide colour panel    <250 47 self pane int>
+            doShowColourPanel(longIntegerValue(args->data[2]), integerValue(args->data[3]));
+            break;
+        case 48:                //get colour panel colour   <250 48 self pane>
+            returnedValue = newLInteger(doGetColourFromPanel(longIntegerValue(args->data[2])));
+            break;
         case 50:                //get mouse position in window, as Array x,y    <250 50 self>
             returnedValue = doGetMousePositionInWindow();
             break;
@@ -256,6 +276,9 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
         case 81:                //add view to scrollview    <250 81 self scrollpointer viewpointer>
             doAddViewToScrollView(longIntegerValue(args->data[2]), longIntegerValue(args->data[3]));
             break;
+        case 82:                //get scrollview rectangle  <250 82 self scrollpointer>
+            returnedValue = doScrollViewRect(longIntegerValue(args->data[2]));
+            break;
         case 90:                //alert panel <250 90 self title message style button1 button2>
             getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
             getUnixString(stringBuffer2, sizeof(stringBuffer2)-1, args->data[3]);
@@ -280,12 +303,17 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
             unsigned int sz = SIZE(buff);
             void *ptr = malloc(sz+1);
             if (ptr == NULL) error("Cannot allocate temporary buffer for image size: %d", sz);
-            getUnixString(ptr, sz+1, buff);
+            getUnixString(ptr, sz+1, (Object *) buff);
             doSetImage(longIntegerValue(args->data[2]), ptr, integerValue(args->data[4]), integerValue(args->data[5]));
             free(ptr);
             }
             break;
-
+        case 110:               //corners for a view    <250 110 self pane radius>
+            doCornerView(longIntegerValue(args->data[2]), integerValue(args->data[3]));
+            break;
+        case 111:               //shadow for a view     <250 111 self pane radius opacity>      NB: opacity in percent
+            doShadowView(longIntegerValue(args->data[2]), integerValue(args->data[3]), integerValue(args->data[4]));
+            break;
         default:
             error("Unknown GUI primitive: %d!", subPrim);
             break;
