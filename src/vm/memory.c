@@ -327,7 +327,7 @@ struct object *gcollect(int sz)
     /* then see if there is room for allocation */
     memoryPointer = WORDSDOWN(memoryPointer, sz + 2);
     if ((intptr_t)memoryPointer < (intptr_t)memoryBase) {
-        error("insufficient memory after garbage collection when allocating object of size %d!", sz);
+        error("insufficient memory after garbage collection when allocating object of size %d! (memoryPtr=%p, memoryBase=%p)", sz, memoryPointer, memoryBase);
     }
     SET_SIZE(memoryPointer, sz);
 

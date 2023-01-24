@@ -108,6 +108,14 @@ BOOL eventCommon(void *sender, NSEvent *theEvent) {
     struct object *myContext = myProcess->data[contextInProcess];
     rootStack[rootTop++] = myContext;
 
+//     //set into arg array item
+//     struct object *argArray = myContext->data[argumentsInContext];
+//
+//     //get true sender
+//     Object *senderTable = getClassVariable("MacApp", "senderTable");
+//     Object *trueSender = dictLookup(senderTable, ptr);
+//     argArray->data[2] = trueSender; //newString(ptr);
+
     //execute the Process
     int ret = execute(myProcess, 0);
 
@@ -844,6 +852,8 @@ long long doCreateWindow() {
 //    [win setBackgroundColor: [NSColor whiteColor]];          //separate call
 //    [win setIsVisible: YES];                                 //separate call
 
+//    NSLog(@"Created window: %p", win);
+
     return (long long) win;
 }
 
@@ -915,87 +925,100 @@ void doShadowView(void *view, int radius, int opacity) {
 
 //COLOURS
 //-----------------------------------------------------------------------------
-//create colour object
-long long doCreateColour(float r, float g, float b, float a) {
+//HELPER: create colour object
+NSColor *colourFromArray(Object *c) {
 
-    NSColor *myColour = [NSColor colorWithCalibratedRed: r
-                                                  green: g
-                                                  blue:  b
-                                                  alpha: a ];
-//    NSLog(@"Colour: %d %d %d %d: %lld", r, g, b, a, (long long) myColour);
-    return (long long) myColour;
+    //unpack the Array
+    float r = (float) integerValue(c->data[0])/255.0;
+    float g = (float) integerValue(c->data[1])/255.0;
+    float b = (float) integerValue(c->data[2])/255.0;
+    float a = (float) integerValue(c->data[3])/255.0;
+
+    //create the colour
+    return [NSColor colorWithRed: r green: g blue:  b alpha: a ];
 }
 
 //-----------------------------------------------------------------------------
-//set view background colour
-void doSetViewBackgroundColour(void *v, void *c) {
+//HELPER: get colour as Array
+Object *colourAsArray(NSColor *c) {
 
-//    NSLog(@"v: %lld to: %lld", (long long) v, (long long) c);
+    CGFloat red = 0.0, green = 0.0, blue = 0.0, alpha = 0.0;
+    Object *arr = newArray(4);
+
+    [c getRed: &red green: &green blue: &blue alpha: &alpha];
+
+    //create the Array and fill it; scale the floats to 0..255 [not perfect!]
+    arr->data[0] = newInteger((int) (red * 255.0));
+    arr->data[1] = newInteger((int) (green * 255.0));
+    arr->data[2] = newInteger((int) (blue * 255.0));
+    arr->data[3] = newInteger((int) (alpha * 255.0));
+
+//     NSLog(@"Colour: %f %f %f %f", red, green, blue, alpha);
+//     NSLog(@"Arr: %d %d %d %d", integerValue(arr->data[0]), integerValue(arr->data[1]), integerValue(arr->data[2]), integerValue(arr->data[3]));
+    return arr;
+}
+
+
+//-----------------------------------------------------------------------------
+//create colour object
+// long long doCreateColour(float r, float g, float b, float a) {
+//
+//     NSColor *myColour = [NSColor colorWithCalibratedRed: r
+//                                                   green: g
+//                                                   blue:  b
+//                                                   alpha: a ];
+// //    NSLog(@"Colour: %d %d %d %d: %lld", r, g, b, a, (long long) myColour);
+//     return (long long) myColour;
+// }
+
+//-----------------------------------------------------------------------------
+//set view background colour
+void doSetViewBackgroundColour(void *v, Object *c) {
+
     //ensure we have a layer
     ((NSView *) v).wantsLayer = YES;
 
     //set it to the view's layer
-    [((NSView *) v).layer setBackgroundColor: ((NSColor *) c).CGColor];
+    [((NSView *) v).layer setBackgroundColor: colourFromArray(c).CGColor];
 }
 
 //-----------------------------------------------------------------------------
 //get view background colour
-long long doGetBackgroundColour(void *v) {
-
-    //set default as black colour
-    NSColor *myColour = [NSColor blackColor];
-
-    //get view and its layer colour
-    CGColorRef col = [((NSView *)v).layer backgroundColor];     //NULL if nothing
-
-    //if there is one get it
-    if (col != NULL) {
-        myColour = [NSColor colorWithCGColor: col];
-    }
-
-    return (long long) myColour;
-}
-
-//-----------------------------------------------------------------------------
-//set view border colour
-void doSetViewBorderColour(void *v, void *c) {
+Object *doGetBackgroundColour(void *v) {
 
     //ensure we have a layer
     ((NSView *) v).wantsLayer = YES;
 
-    //set it to its border
-    [((NSView *) v).layer setBorderColor: ((NSColor *) c).CGColor];
+    //get view and its layer colour
+    CGColorRef col = [((NSView *)v).layer backgroundColor];
+
+    return colourAsArray( [NSColor colorWithCGColor: col] );
+}
+
+//-----------------------------------------------------------------------------
+//set view border colour
+void doSetViewBorderColour(void *v, Object *c) {
+
+    //ensure we have a layer
+    ((NSView *) v).wantsLayer = YES;
+
+    //set it to the border
+    [((NSView *) v).layer setBorderColor: colourFromArray(c).CGColor];
 }
 
 //-----------------------------------------------------------------------------
 //set text colour
-void doSetTextColour(void *v, void *c) {
-    [(NSTextField *) v setTextColor: (NSColor *) c];
+void doSetTextColour(void *v, Object *c) {
+
+    [(NSTextField *) v setTextColor: colourFromArray(c)];
 }
 
 //-----------------------------------------------------------------------------
-//get colour as Array
-Object *doColourAsArray(void *c) {
-
-    CGFloat red = 0.0, green = 0.0, blue = 0.0, alpha = 0.0;
-
-    [(NSColor *) c getRed: &red green: &green blue: &blue alpha: &alpha];
-
-    //create the Array and fill it; scale the floats to 0..255 [not perfect!]
-    Object *arr = newArray(4);
-    arr->data[0] = newInteger((int) red * 255.0);
-    arr->data[1] = newInteger((int) green * 255.0);
-    arr->data[2] = newInteger((int) blue * 255.0);
-    arr->data[3] = newInteger((int) alpha * 255.0);
-
-    return arr;
-}
-
-//-----------------------------------------------------------------------------
-//colourPanel: picker := MacApp colorPanel.
+//colourPanel
 long long doColourPanel() {
 
     NSColorPanel* cp = [NSColorPanel sharedColorPanel];
+    [cp setColor: [cp backgroundColor]];
     [cp setIsVisible: NO];
 
     return (long long) cp;
@@ -1009,11 +1032,12 @@ void doShowColourPanel(void *cp, int show) {
 
 //-----------------------------------------------------------------------------
 //get colour from panel
-long long doGetColourFromPanel(void *cp) {
+Object *doGetColourFromPanel(void *cp) {
 
-    NSColor *myColour = [(NSColorPanel *) cp color];
+    NSColor *myColour = [[NSColor new] autorelease];
+    myColour = [(NSColorPanel *) cp color];
 
-    return (long long) myColour;
+    return colourAsArray(myColour);
 }
 
 //WINDOW AND FRAME
@@ -1047,7 +1071,7 @@ void doSetWindowCenter(void *w, char *title) {
 //-----------------------------------------------------------------------------
 //create view
 long long doCreateView() {
-    MyView * view = [[[MyView alloc] initWithFrame: CGRectZero] autorelease];
+    MyView * view = [[[MyView alloc] initWithFrame: CGRectZero] autorelease]; // autorelease];
     view.wantsLayer = YES;
 //    [view setAcceptResponder: YES];     //do we always want this??
 //    NSLog(@"Created view %lld", (long long) view);
@@ -1153,7 +1177,7 @@ int doGetButtonState(void *w) {
 //HELPER: common for textfields, boxes, and labels
 NSTextField *textFieldCommon(int maxLines, BOOL editable, BOOL selectable) {
 
-    NSTextField *textField = [[NSTextField alloc] initWithFrame: CGRectZero];
+    NSTextField *textField = [[[NSTextField alloc] initWithFrame: CGRectZero] retain];
 
     [textField setBezeled: selectable];
     [textField setDrawsBackground: NO];
@@ -1193,13 +1217,25 @@ long long doCreateTextBox(int maxLines) {
 //-----------------------------------------------------------------------------
 //set control string value (not title)
 void doSetControlString(void *w, char *s) {
-    [(NSControl *) w setStringValue: [NSString stringWithUTF8String: s]];
+    if (w == NULL || s == NULL) return;
+    NSString *str = [NSString stringWithUTF8String: s];
+    if (str == nil) return;
+    [(NSControl *) w setStringValue: str];
 }
 
 //-----------------------------------------------------------------------------
 //get control string value (not title)
 char * doGetControlString(void *w) {
+    if (w == NULL) return NULL;
     return (char *) [[(NSControl *) w stringValue] UTF8String];
+}
+
+//-----------------------------------------------------------------------------
+//timer action
+void doTimerAction(int delay) {
+
+    [myDelegate performSelector:@selector(action:) withObject: NSApp afterDelay: (float) delay];
+
 }
 
 //-----------------------------------------------------------------------------
@@ -1486,9 +1522,14 @@ void initMacGUI() {
     //... build Context ...
     struct object *myContext = myProcess->data[contextInProcess];
 
-    //set into arg array item 4!
-    struct object *argArray = myContext->data[argumentsInContext];
-    argArray->data[2] = newString(ptr);
+//     //set into arg array
+//     struct object *argArray = myContext->data[argumentsInContext];
+//
+//     //get true sender
+//     Object *senderTable = getClassVariable("MacApp", "senderTable");
+//     Object *trueSender = dictLookup(senderTable, ptr);
+//
+//     argArray->data[2] = trueSender; //newString(ptr);
 
     rootStack[rootTop++] = myContext;
 
@@ -1539,13 +1580,18 @@ void initMacGUI() {
     //... build Context ...
     struct object *myContext = myProcess->data[contextInProcess];
 
+    //set into arg array
+    struct object *argArray = myContext->data[argumentsInContext];
+
+    //get true sender into item 3
+    Object *senderTable = getClassVariable("MacApp", "senderTable");
+    Object *trueSender = dictLookup(senderTable, ptr);
+    argArray->data[2] = trueSender; //newString(ptr);
+
     //get notification name as char *
     char *name = (char *) [noteName UTF8String];
-    //create LST string
-    struct object *nameObject = newString(name);
     //set into arg array item 4!
-    struct object *argArray = myContext->data[argumentsInContext];
-    argArray->data[3] = nameObject;
+    argArray->data[3] = newString(name);
 
     //save context
     rootStack[rootTop++] = myContext;
@@ -1583,8 +1629,8 @@ void initMacGUI() {
 - (void) windowDidResize: (NSNotification *) aNotification {
 //    NSLog(@"Window did resize");
     id sender = [aNotification object];
-    id name =[aNotification name];
-    [myDelegate noteAction: sender name: name];
+//    id name =[aNotification name];    //not needed
+    [myDelegate action: sender];
 }
 
 - (void) applicationWillFinishLaunching: (NSNotification *) aNotification {
@@ -1638,6 +1684,7 @@ void initMacGUI() {
 
     window = myMainWindow;      //save for later use
     [window center];
+    [window setAutorecalculatesKeyViewLoop: YES];
     window.collectionBehavior = NSWindowCollectionBehaviorFullScreenPrimary;
 
     return self;
@@ -1681,6 +1728,18 @@ void initMacGUI() {
     id sender = [aNotification object];
     id name =[aNotification name];
     [self noteAction: sender name: name];
+}
+
+- (BOOL) control: (NSControl *) control textView: (NSTextView *) fieldEditor doCommandBySelector: (SEL) commandSelector {
+     BOOL retval = NO;
+     if (commandSelector == @selector(insertNewline:)) {            //insertTab: insertBacktab etc...
+     //see https://developer.apple.com/documentation/appkit/nsstandardkeybindingresponding/3005218-insertnewlineignoringfieldeditor?language=objc
+         retval = YES;
+         [fieldEditor insertNewlineIgnoringFieldEditor: nil];
+
+         //perhaps check if ENTER is in a textfield?
+     }
+     return retval;
 }
 
 //DRAGGING SOURCE

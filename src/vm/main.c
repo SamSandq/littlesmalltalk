@@ -25,8 +25,8 @@
 
 */
 # define DefaultImageFile "lst.img"
-# define DefaultStaticSize 300000
-# define DefaultDynamicSize 90000000    // 300000
+# define DefaultStaticSize 300000       //300000
+# define DefaultDynamicSize 20000000     //300000
 # define DefaultTmpdir "/tmp"
 
 /*
@@ -50,8 +50,7 @@ static void find_initial_method(void);
 int main(int argc, char **argv)
 {
     struct object *aProcess, *aContext, *o;
-    int size, i;
-    long long staticSize, dynamicSize;
+    int size, i, staticSize, dynamicSize;
     FILE *fp;
     char imageFileName[120], *p;
 
@@ -80,10 +79,10 @@ int main(int argc, char **argv)
             printf("Little Smalltalk, version " VERSION_STRING "\n");
         } else if (strcmp(argv[i], "-s") == 0) {
             staticSize = atoi(argv[++i]);
-            printf("Static size set to: %lld\n", staticSize);
+            printf("Static size set to: %d\n", staticSize);
         } else if (strcmp(argv[i], "-d") == 0) {
             dynamicSize = atoi(argv[++i]);
-            printf("Dynamic size set to: %lld\n", dynamicSize);
+            printf("Dynamic size set to: %d\n", dynamicSize);
         } else if (strcmp(argv[i], "-g") == 0) {
             info("Turning on debugging.");
             debugging = 1;

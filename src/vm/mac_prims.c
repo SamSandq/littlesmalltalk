@@ -6,6 +6,7 @@
 //
 
 #include <stdlib.h>
+#include <string.h>
 #include "globals.h"
 #include "interp.h"
 #include "memory.h"
@@ -54,25 +55,43 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
                 returnedValue = newInteger( fLen );
                 fseek(fp, 0, SEEK_SET);
                 break;
-            case 253:       //get number of temporaries in block    <253 block>
-            {
-                Object *block = args->data[0];
-                Object *tempArr = block->data[temporariesInBlock];
-                int high = integerValue(block->data[argumentLocationInBlock]);
-                int sz = (tempArr ? ((int)SIZE(tempArr) - high) : 0);
-    //            printf("Args (high: %d): %d\n", high, sz);
-                returnedValue = newInteger(sz);
-            }
+            case 253:       //find substring. 0 not found, >1 pos
+                getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[0]);
+                getUnixString(stringBuffer2, sizeof(stringBuffer)-1, args->data[1]);
+                {
+                    int pos = 0;
+                    int from = integerValue(args->data[2]);
+                    if (strlen(stringBuffer2) < strlen(stringBuffer + from)) {
+                        char *where = strstr(stringBuffer + from, stringBuffer2);
+                        pos = (where != NULL)? where - stringBuffer + 1: 0;
+                    };
+                    returnedValue = newInteger(pos);
+                }
                 break;
             case 254:       //copyFile <254 to from>
                 getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[0]);
                 getUnixString(stringBuffer2, sizeof(stringBuffer)-1, args->data[1]);
                 doCopyFile(stringBuffer, stringBuffer2);
                 break;
+            case 255:       //command(s)    <255 s>
+                getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[0]);
+                returnedValue = newInteger(system(stringBuffer));
+                break;
             default:
                 returnedValue = nilObject;
                 break;
         }
+
+//NOT USED  case 2xx:   numberOfTempsInBlock    <2xx block>
+//             {
+//                 Object *block = args->data[0];
+//                 Object *tempArr = block->data[temporariesInBlock];
+//                 int high = integerValue(block->data[argumentLocationInBlock]);
+//                 int sz = (tempArr ? ((int)SIZE(tempArr) - high) : 0);
+//     //            printf("Args (high: %d): %d\n", high, sz);
+//                 returnedValue = newInteger(sz);
+//             }
+
 
         return returnedValue;   /* 250: SSQ+ these are for GUI primitives */
     }
@@ -187,25 +206,25 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
         case 31:                //create textbox    <250 31 self lines>
             returnedValue = newLInteger( doCreateTextBox(integerValue(args->data[2])) );
             break;
-        case 40:                //create colour     <250 40 self + args 2, 3, 4, 5: r. g. b. a
-            returnedValue = newLInteger( doCreateColour((float) integerValue(args->data[2])/255, (float) integerValue(args->data[3])/255,
-                (float) integerValue(args->data[4])/255, (float) integerValue(args->data[5])/255 ));
-            break;
+//         case 40:                //create colour     <250 40 self + args 2, 3, 4, 5: r. g. b. a
+//             returnedValue = newLInteger( doCreateColour((float) integerValue(args->data[2])/255, (float) integerValue(args->data[3])/255,
+//                 (float) integerValue(args->data[4])/255, (float) integerValue(args->data[5])/255 ));
+//             break;
         case 41:                //set pane background colour    <250 41 self pane colour>
-            doSetViewBackgroundColour(longIntegerValue(args->data[2]), longIntegerValue(args->data[3]));
+            doSetViewBackgroundColour(longIntegerValue(args->data[2]), args->data[3]);
             break;
         case 42:                //set pane border colour    <250 42 self pane colour>
-            doSetViewBorderColour(longIntegerValue(args->data[2]), longIntegerValue(args->data[3]));
+            doSetViewBorderColour(longIntegerValue(args->data[2]), args->data[3]);
             break;
         case 43:                //set text colour    <250 43 self textitem colour>
-            doSetTextColour(longIntegerValue(args->data[2]), longIntegerValue(args->data[3]));
+            doSetTextColour(longIntegerValue(args->data[2]), args->data[3]);
             break;
         case 44:                //get view colour   <250 44 self pane>
-            returnedValue = newLInteger( doGetBackgroundColour(longIntegerValue(args->data[2])));
+            returnedValue =  doGetBackgroundColour(longIntegerValue(args->data[2]));
             break;
-        case 45:                //get colour as Array   <250 45 self colour>
-            returnedValue = doColourAsArray(longIntegerValue(args->data[2]));
-            break;
+//         case 45:                //get colour as Array   <250 45 self colour>
+//             returnedValue = doColourAsArray(longIntegerValue(args->data[2]));
+//             break;
         case 46:                //create colourPanel    <250 46 self>
             returnedValue = newLInteger(doColourPanel());
             break;
@@ -213,7 +232,7 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
             doShowColourPanel(longIntegerValue(args->data[2]), integerValue(args->data[3]));
             break;
         case 48:                //get colour panel colour   <250 48 self pane>
-            returnedValue = newLInteger(doGetColourFromPanel(longIntegerValue(args->data[2])));
+            returnedValue = doGetColourFromPanel(longIntegerValue(args->data[2]));
             break;
         case 50:                //get mouse position in window, as Array x,y    <250 50 self>
             returnedValue = doGetMousePositionInWindow();
@@ -292,7 +311,11 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
             break;
         case 92:                //save panel    <250 92 self default>
             getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
-            returnedValue = newString( doSavePanel(stringBuffer) );
+            {
+                char * res = doSavePanel(stringBuffer);
+                if (res == NULL) returnedValue = newString("");
+                else returnedValue = newString(res);
+             }
             break;
         case 100:               //create image pane <250 100 self>
             returnedValue = newLInteger( doCreateImageView() );
@@ -313,6 +336,9 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
             break;
         case 111:               //shadow for a view     <250 111 self pane radius opacity>      NB: opacity in percent
             doShadowView(longIntegerValue(args->data[2]), integerValue(args->data[3]), integerValue(args->data[4]));
+            break;
+        case 120:               //Timer after: <secs> action: aBlock    <250 120 self secs>
+            doTimerAction(integerValue(args->data[2]));
             break;
         default:
             error("Unknown GUI primitive: %d!", subPrim);
