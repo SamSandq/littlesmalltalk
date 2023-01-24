@@ -1503,7 +1503,7 @@ replaceString: this withString: that
      j >= 1] whileTrue: [
         w := self copyFrom: i to: j-1.
         s := s + w + that.
-        i := j + 1.
+        i := j+(this size).
     ].
     s := s + (self copyFrom: i to: (self size)).
     ^s
