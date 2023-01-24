@@ -450,7 +450,7 @@ black
 !
 
 =Color
-darkGrey       ^(Color newRed: 77  green: 77  red: 77   alpha: 255)
+darkGrey       ^(Color newRed: 77  green: 77  blue: 77   alpha: 255)
 
 !
 =Color
