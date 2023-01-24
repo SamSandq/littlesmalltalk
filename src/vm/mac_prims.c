@@ -61,8 +61,8 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
                 {
                     int pos = 0;
                     int from = integerValue(args->data[2]);
-                    if (strlen(stringBuffer2) < strlen(stringBuffer + from)) {
-                        char *where = strstr(stringBuffer + from, stringBuffer2);
+                    if (strlen(stringBuffer2) < strlen(stringBuffer + from-1)) {
+                        char *where = strstr(stringBuffer + from-1, stringBuffer2);
                         pos = (where != NULL)? where - stringBuffer + 1: 0;
                     };
                     returnedValue = newInteger(pos);
