@@ -57,7 +57,7 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
                 break;
             case 253:       //find substring. 0 not found, >1 pos
                 getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[0]);
-                getUnixString(stringBuffer2, sizeof(stringBuffer)-1, args->data[1]);
+                getUnixString(stringBuffer2, sizeof(stringBuffer2)-1, args->data[1]);
                 {
                     int pos = 0;
                     int from = integerValue(args->data[2]);
@@ -70,8 +70,8 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
                 break;
             case 254:       //copyFile <254 to from>
                 getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[0]);
-                getUnixString(stringBuffer2, sizeof(stringBuffer)-1, args->data[1]);
-                doCopyFile(stringBuffer, stringBuffer2);
+                getUnixString(stringBuffer2, sizeof(stringBuffer2)-1, args->data[1]);
+                returnedValue = newInteger(doCopyFile(stringBuffer, stringBuffer2));
                 break;
             case 255:       //command(s)    <255 s>
                 getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[0]);
@@ -331,6 +331,10 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
             free(ptr);
             }
             break;
+        case 102:               //set image from file   <250 102 self pane fileName scaling>
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[3]);
+            doSetImageFromFile(longIntegerValue(args->data[2]), stringBuffer, integerValue(args->data[4]));
+            break;
         case 110:               //corners for a view    <250 110 self pane radius>
             doCornerView(longIntegerValue(args->data[2]), integerValue(args->data[3]));
             break;
@@ -339,6 +343,15 @@ struct object *mac_primitive(int primitiveNumber, struct object *args, int *fail
             break;
         case 120:               //Timer after: <secs> action: aBlock    <250 120 self secs>
             doTimerAction(integerValue(args->data[2]));
+            break;
+        case 200:               //create directory      <250 200 self dirName> returns 0 on failure 1 otherwise
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
+            returnedValue = newInteger( doCreateDirectory(stringBuffer) );
+            break;
+        case 201:              //renameFile <250 201 self to from>
+            getUnixString(stringBuffer, sizeof(stringBuffer)-1, args->data[2]);
+            getUnixString(stringBuffer2, sizeof(stringBuffer2)-1, args->data[3]);
+            returnedValue = newInteger(doRenameFile(stringBuffer, stringBuffer2));
             break;
         default:
             error("Unknown GUI primitive: %d!", subPrim);

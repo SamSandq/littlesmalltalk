@@ -26,7 +26,7 @@
 */
 # define DefaultImageFile "lst.img"
 # define DefaultStaticSize 300000       //300000
-# define DefaultDynamicSize 20000000     //300000
+# define DefaultDynamicSize 300000     //300000
 # define DefaultTmpdir "/tmp"
 
 /*
@@ -38,12 +38,13 @@
 
 
 extern int errno;
-
+extern void basicInitGUI();
 
 # ifdef COUNTTEMPS
 FILE *tempFile;
 # endif
 
+char imageFileName[256];
 
 static void find_initial_method(void);
 
@@ -52,9 +53,11 @@ int main(int argc, char **argv)
     struct object *aProcess, *aContext, *o;
     int size, i, staticSize, dynamicSize;
     FILE *fp;
-    char imageFileName[120], *p;
+    //char imageFileName[120],
 
-    printf("Little Smalltalk starting up...\n");
+    char *p;
+
+//    printf("Little Smalltalk starting up...\n");
 
     prog_argc = argc;
     prog_argv = (const char **)argv;
@@ -67,10 +70,10 @@ int main(int argc, char **argv)
     /*
      * See if our environment tells us what TMPDIR to use
      */
-    p = getenv("TMPDIR");
-    if (p) {
-        tmpdir = strdup(p);
-    }
+//     p = getenv("TMPDIR");
+//     if (p) {
+//         tmpdir = strdup(p);
+//     }
 
     /* first parse arguments */
     for (i = 1; i < argc; i++) {
@@ -98,6 +101,9 @@ int main(int argc, char **argv)
     info("Initializing GC memory pool.");
 
     gcinit(staticSize, dynamicSize);
+
+    info("Initialising GUI.");
+    basicInitGUI();
 
     info("Reading in image from file %s.", imageFileName);
 

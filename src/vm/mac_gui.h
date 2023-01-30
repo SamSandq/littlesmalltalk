@@ -80,7 +80,7 @@ extern char *doSavePanel();
 extern Object *doOpenPanel();
 extern long long doCreateImageView();
 extern void doSetImage();
-extern void doCopyFile();
+extern int doCopyFile();
 extern void doFlipView();
 extern void doCornerView();
 extern void doShadowView();
@@ -89,4 +89,7 @@ extern long long doColourPanel();
 extern void doShowColourPanel();
 extern Object *doGetColourFromPanel();
 extern void doTimerAction();
+extern int doCreateDirectory();
+extern int doRenameFile();
+extern void doSetImageFromFile();
 

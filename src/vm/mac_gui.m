@@ -18,6 +18,8 @@
 
 #import "mac_gui.h"
 
+extern char imageFileName[256] = "";
+
 id myMainWindow = NULL;
 id myDelegate = NULL;
 
@@ -532,6 +534,31 @@ void doSetImage(void *w, void *im, int len, int scale) {
         NSData *data = [NSData dataWithBytes: im length: (NSUInteger) len];
         [((NSImageView *) w).layer setContents: [[NSImage alloc] initWithData: data]];
     }
+
+}
+
+//-----------------------------------------------------------------------------
+//set image in view direct from file
+void doSetImageFromFile(void *w, char *fil, int scale) {
+
+    NSString *fileName = [NSString stringWithUTF8String: fil];
+
+    NSImage *image = [[NSImage alloc] initWithContentsOfFile: fileName];           //gives I/O error: buffer full --- BUT WORKS?
+
+    id scaleMode;
+    switch (scale) {
+        case 0: scaleMode = kCAGravityCenter; break;
+        case 1: scaleMode = kCAGravityResize; break;
+        case 2: scaleMode = kCAGravityResizeAspect; break;
+        case 3: scaleMode = kCAGravityResize; break;
+        default: scaleMode = kCAGravityResizeAspect; break;
+    }
+
+    [((NSImageView *) w) setImage: image];
+    [((NSImageView *) w) setImageScaling: scaleMode];
+
+//     [((NSImageView *) w).layer setContentsGravity: scaleMode];
+//     [((NSImageView *) w).layer setContents: image];
 
 }
 
@@ -1257,15 +1284,35 @@ void doAppRun() {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //copy file the ObjC way
-void doCopyFile(char *topath, char *frompath) {
+int doCopyFile(char *topath, char *frompath) {
 
     NSString *srcPath = [NSString stringWithUTF8String: frompath];
     NSString *dstPath = [NSString stringWithUTF8String: topath];
 
-    [[NSFileManager defaultManager] copyItemAtPath: srcPath toPath: dstPath error: nil];
-
+    if ([[NSFileManager defaultManager] copyItemAtPath: srcPath toPath: dstPath error: nil]) return 1;
+    return 0;
 }
 
+//-----------------------------------------------------------------------------
+//create directory the ObjC way
+int doCreateDirectory(char *name) {
+
+    if ([[NSFileManager defaultManager] createDirectoryAtPath: [NSString stringWithUTF8String: name]
+        withIntermediateDirectories: YES attributes: nil error: nil]) return 1;
+    return 0;
+}
+
+//-----------------------------------------------------------------------------
+//rename file the ObjC way
+int doRenameFile(char *topath, char *frompath) {
+
+    NSString *srcPath = [NSString stringWithUTF8String: frompath];
+    NSString *dstPath = [NSString stringWithUTF8String: topath];
+
+    if ([[NSFileManager defaultManager] moveItemAtPath: srcPath toPath: dstPath error: nil]) return 1;
+    return 0;
+
+}
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -1404,8 +1451,8 @@ Object *doStringDateTime(Object *o) {
 
 //-----------------------------------------------------------------------------
 //init GUI Cocoa app
-void initMacGUI() {
 
+void basicInitGUI() {
     //crucial
     [NSApplication sharedApplication];
 
@@ -1413,6 +1460,39 @@ void initMacGUI() {
     [myDelegate makeMainWindow];
     [myDelegate makeKeyWindow];
     [NSApp setDelegate: myDelegate];
+
+    ProcessSerialNumber myProcess = { 0, kCurrentProcess };
+    TransformProcessType(
+        &myProcess,
+        kProcessTransformToForegroundApplication
+    );
+
+//    NSLog(@"App started!");
+
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+
+    //Get documents directory
+    NSArray *directoryPaths = NSSearchPathForDirectoriesInDomains (NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *documentsDirectoryPath = [directoryPaths objectAtIndex:0];
+
+    NSString *startup = [[NSBundle mainBundle] pathForResource:@"lst" ofType:@"img"];          //default is where resource is
+
+    if ([[NSFileManager defaultManager] fileExistsAtPath: startup] == YES) {
+        strcpy(imageFileName, [startup UTF8String]);
+    }
+
+
+}
+
+void initMacGUI() {
+
+    //crucial
+//     [NSApplication sharedApplication];
+//
+//     myDelegate = [[MyAppDelegate new] autorelease];
+//     [myDelegate makeMainWindow];
+//     [myDelegate makeKeyWindow];
+//     [NSApp setDelegate: myDelegate];
 
 //    [NSApp setDelegate: [appdelegate new]];
 //    [NSApp setDelegate: [SpecialDelegate new]];
@@ -1469,13 +1549,13 @@ void initMacGUI() {
     // which is in fact possible!!!!
     //see: https://stackoverflow.com/questions/2724482/catching-multiple-keystrokes-simultaneously-in-cocoa/2731166#2731166
 
-    ProcessSerialNumber myProcess = { 0, kCurrentProcess };
-    TransformProcessType(
-        &myProcess,
-        kProcessTransformToForegroundApplication
-    );
-
-//    NSLog(@"App started!");
+//     ProcessSerialNumber myProcess = { 0, kCurrentProcess };
+//     TransformProcessType(
+//         &myProcess,
+//         kProcessTransformToForegroundApplication
+//     );
+//
+// //    NSLog(@"App started!");
 
     return;
 }
